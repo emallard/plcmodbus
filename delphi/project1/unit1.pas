@@ -5,7 +5,8 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ModbusTCP;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls,
+  ModbusTCP, MonThread;
 
 type
 
@@ -18,6 +19,7 @@ type
     Button4: TButton;
     Button5: TButton;
     Memo1: TMemo;
+    ProgressBar1: TProgressBar;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -27,7 +29,9 @@ type
     procedure Memo1Change(Sender: TObject);
   private
     FModbus      : TModbusTCPClient;
+    FThread      : TSinusThread;
     procedure Log(const Msg: string; IsError: Boolean = False);
+    function ReadWaterLevel() : Word;
 
   public
 
@@ -52,11 +56,6 @@ begin
 
 end;
 
-procedure TForm1.Button1Click(Sender: TObject);
-begin
-  //if not FModbus.Connected then begin Log('Non connecté.', True); Exit; end;
-  Log('Connecté', True);
-end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 var
@@ -64,6 +63,7 @@ var
 begin
   try
      FModbus := TModbusTCPClient.Create;
+     FThread := TSinusThread.Create(ProgressBar1, @ReadWaterLevel);
      connected := FModbus.Connect('127.0.0.1', 502, 1);
      Log('connected ' + connected.ToString(), False);
   except
@@ -72,6 +72,19 @@ begin
   end;
 end;
 
+
+// Stop Pump
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  if not FModbus.Connected then begin Log('Non connecté.', True); Exit; end;
+  // FC 05 — Coil 0 = FALSE
+  if FModbus.WriteCoil(0, False) then
+    Log('Commande STOP envoyée (Coil 0 → FALSE)')
+  else
+    Log('Échec commande STOP.', True);
+end;
+
+// Start Pump
 procedure TForm1.Button3Click(Sender: TObject);
 begin
   if not FModbus.Connected then begin Log('Non connecté.', True); Exit; end;
@@ -82,6 +95,7 @@ begin
     Log('Échec commande MARCHE.', True);
 end;
 
+// Set Water Level
 procedure TForm1.Button4Click(Sender: TObject);
 var
   Val: Integer;
@@ -89,22 +103,37 @@ begin
   if not FModbus.Connected then begin Log('Non connecté.', True); Exit; end;
   Val := 10;
   if FModbus.WriteRegister(0, Val) then
-    Log(Format('Consigne envoyée : %d %%', [Val]))
+    Log(Format('WaterLevel envoyée : %d %%', [Val]))
   else
-    Log('Échec de l''écriture de la consigne.', True);
+    Log('Échec de l''écriture de la WaterLevel.', True);
 end;
 
+// Get Water Level
 procedure TForm1.Button5Click(Sender: TObject);
+var WaterLevel: Word;
+begin
+  if not FModbus.Connected then begin Log('Non connecté.', True); Exit; end;
+  WaterLevel := ReadWaterLevel();
+  Log(Format('WaterLevel : %d %%', [WaterLevel]))
+end;
+
+
+function TForm1.ReadWaterLevel(): Word;
 var
   Regs: TModbusRegisters;
 begin
   if not FModbus.Connected then begin Log('Non connecté.', True); Exit; end;
 
   if FModbus.ReadHoldingRegisters(0, 1, Regs) then
-    Log(Format('Consigne reçue : %d', [Regs[0]]))
+    Result := Regs[0]
   else
-    Log('Échec de la lecture de la consigne.', True);
+    begin
+    Log('Échec de la lecture de la WaterLevel.', True);
+    Result := 0;
+    end;
 end;
+
+
 
 procedure TForm1.Log(const Msg: string; IsError: Boolean = False);
 var

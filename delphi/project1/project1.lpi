@@ -49,6 +49,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ModbusTCP"/>
       </Unit>
+      <Unit>
+        <Filename Value="monthread.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="MonThread"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

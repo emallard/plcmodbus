@@ -10,7 +10,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, Unit1, ModbusTCP
+  Forms, Unit1, ModbusTCP, MonThread
   { you can add units after this };
 
 {$R *.res}
